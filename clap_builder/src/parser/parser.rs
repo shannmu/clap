@@ -745,7 +745,7 @@ impl<'cmd> Parser<'cmd> {
         // maybe here lifetime should be 'a
         debug!("Parser::parse_long_arg");
 
-        #[allow(clippy::blocks_in_conditions)]
+        #[allow(clippy::blocks_in_if_conditions)]
         if matches!(parse_state, ParseState::Opt(opt) | ParseState::Pos(opt) if
             self.cmd[opt].is_allow_hyphen_values_set())
         {
@@ -863,7 +863,7 @@ impl<'cmd> Parser<'cmd> {
     ) -> ClapResult<ParseResult> {
         debug!("Parser::parse_short_arg: short_arg={short_arg:?}");
 
-        #[allow(clippy::blocks_in_conditions)]
+        #[allow(clippy::blocks_in_if_conditions)]
         if matches!(parse_state, ParseState::Opt(opt) | ParseState::Pos(opt)
                 if self.cmd[opt].is_allow_hyphen_values_set() || (self.cmd[opt].is_allow_negative_numbers_set() && short_arg.is_negative_number()))
         {
