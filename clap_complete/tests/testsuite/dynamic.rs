@@ -19,19 +19,47 @@ macro_rules! complete {
 #[test]
 fn suggest_subcommand_subset() {
     let mut cmd = Command::new("exhaustive")
-        .subcommand(Command::new("hello-world"))
-        .subcommand(Command::new("hello-moon"))
-        .subcommand(Command::new("goodbye-world"));
+        .subcommand(Command::new("hello-world").visible_alias("hello-world-foo").alias("hidden-world").visible_long_flag_alias("--world").long_flag_alias("--hidden-world").visible_short_flag_alias('w').short_flag_alias('W'))
+        .subcommand(Command::new("hello-moon").visible_alias("hello-moon-foo").alias("hidden-moon").visible_long_flag_alias("--moon").long_flag_alias("--hidden-moon").visible_short_flag_alias('m').short_flag_alias('M'))
+        .subcommand(Command::new("goodbye-world").visible_alias("goodbye-world-foo").alias("hidden-goodbye").visible_long_flag_alias("--goodbye").long_flag_alias("--hidden-goodbye").visible_short_flag_alias('g').short_flag_alias('G'));
 
     assert_data_eq!(
         complete!(cmd, "he"),
         snapbox::str![
             "hello-moon
+hello-moon-foo
 hello-world
+hello-world-foo
 help\tPrint this message or the help of the given subcommand(s)"
         ],
     );
+
+    assert_data_eq!(
+        complete!(cmd, "--"),
+        snapbox::str![
+            "--help\tPrint help
+--goodbye
+--moon
+--world"
+        ],
+    );
+
+    assert_data_eq!(
+        complete!(cmd, "-"),
+        snapbox::str![
+            "--help\tPrint help
+-h\tPrint help
+--goodbye
+--moon
+--world
+-g
+-m
+-w"
+        ],
+    );
+    
 }
+
 
 #[test]
 fn suggest_long_flag_subset() {

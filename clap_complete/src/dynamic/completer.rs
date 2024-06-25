@@ -336,6 +336,30 @@ fn subcommands(p: &clap::Command) -> Vec<(String, Option<StyledStr>)> {
     debug!("subcommands: Has subcommands...{:?}", p.has_subcommands());
 
     p.get_subcommands()
-        .map(|sc| (sc.get_name().to_string(), sc.get_about().cloned()))
+        .map(|sc| {
+            sc.get_name_and_visible_aliases()
+                .into_iter()
+                .map(|s| (s.to_string(), sc.get_about().cloned()))
+        })
+        .flatten()
+        .chain(
+            p.get_subcommands()
+                .map(|sc| {
+                    sc.get_visible_long_flag_aliases()
+                        .map(|alias| (alias.to_string(), sc.get_about().cloned()))
+                })
+                .flatten(),
+        )
+        .chain(
+            p.get_subcommands()
+                .map(|sc| {
+                    sc.get_visible_short_flag_aliases().map(|alias| {
+                        let mut short = "-".to_string();
+                        short.push(alias);
+                        (short, sc.get_about().cloned())
+                    })
+                })
+                .flatten(),
+        )
         .collect()
 }
