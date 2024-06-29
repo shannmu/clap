@@ -1,25 +1,47 @@
-/// Completion support for PowerShell
+/// Completion support for Powershell
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct PowerShell;
+pub struct Powershell;
 
-impl crate::dynamic::Completer for PowerShell {
+impl crate::dynamic::Completer for Powershell {
     fn file_name(&self, name: &str) -> String {
         format!("{name}.ps1")
     }
+
     fn write_registration(
         &self,
-        _name: &str,
+        name: &str,
         bin: &str,
         completer: &str,
         buf: &mut dyn std::io::Write,
     ) -> Result<(), std::io::Error> {
         let bin = shlex::quote(bin);
         let completer = shlex::quote(completer);
+
         writeln!(
             buf,
-            r#"complete -x -c {bin} -a "("'{completer}'" complete --shell fish -- (commandline --current-process --tokenize --cut-at-cursor) (commandline --current-token))""#
+            r#"
+Register-ArgumentCompleter -Native -CommandName {bin} -ScriptBlock {{
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $results = Invoke-Expression "&{completer} complete --shell powershell -- $($commandAst.ToString())";
+    $results | ForEach-Object {{
+        $split = $_.Split("`t");
+        $cmd = $split[0];
+
+        if ($split.Length -eq 2) {{
+            $help = $split[1];
+        }}
+        else {{
+            $help = $split[0];
+        }}
+        
+        [System.Management.Automation.CompletionResult]::new($cmd, $cmd, 'ParameterValue', $help)
+    }}
+}};
+        "#
         )
     }
+
     fn write_complete(
         &self,
         cmd: &mut clap::Command,
