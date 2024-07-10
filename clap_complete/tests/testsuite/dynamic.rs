@@ -34,6 +34,18 @@ help\tPrint this message or the help of the given subcommand(s)"
 }
 
 #[test]
+fn suggest_hidden_long_flags() {
+    let mut cmd = Command::new("exhaustive")
+        .arg(clap::Arg::new("hello-world").long("hello-world"))
+        .arg(clap::Arg::new("hello-moon").long("hello-moon").hide(true))
+        .arg(clap::Arg::new("goodbye-world").long("goodbye-world"));
+
+    assert_data_eq!(complete!(cmd, "--hello"), snapbox::str!["--hello-world"]);
+
+    assert_data_eq!(complete!(cmd, "--hello-m"), snapbox::str!["--hello-moon"]);
+}
+
+#[test]
 fn suggest_subcommand_aliases() {
     let mut cmd = Command::new("exhaustive")
         .subcommand(
@@ -61,6 +73,51 @@ hello-world
 hello-world-foo"
         ],
     );
+}
+
+#[test]
+fn suggest_hidden_long_flag_aliases() {
+    let mut cmd = Command::new("exhaustive")
+        .arg(
+            clap::Arg::new("hello-world")
+                .long("hello-world")
+                .visible_alias("hello-world-foo")
+                .alias("hidden-world"),
+        )
+        .arg(
+            clap::Arg::new("hello-moon")
+                .long("hello-moon")
+                .visible_alias("hello-moon-foo")
+                .alias("hidden-moon")
+                .hide(true),
+        )
+        .arg(
+            clap::Arg::new("goodbye-world")
+                .long("goodbye-world")
+                .alias("goodbye-world-foo"),
+        );
+
+    assert_data_eq!(
+        complete!(cmd, "--hello"),
+        snapbox::str![
+            "--hello-world
+--hello-world-foo
+--hello-moon
+--hello-moon-foo"
+        ]
+    );
+
+    assert_data_eq!(
+        complete!(cmd, "--hello-m"),
+        snapbox::str![
+            "--hello-moon
+--hello-moon-foo"
+        ]
+    );
+
+    assert_data_eq!(complete!(cmd, "--hidden-"), snapbox::str![""]);
+
+    assert_data_eq!(complete!(cmd, "--hidden-w"), snapbox::str![""])
 }
 
 #[test]
