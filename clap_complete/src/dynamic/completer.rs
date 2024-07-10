@@ -121,24 +121,29 @@ fn complete_arg(
                         );
                     }
                 } else {
-                    completions.extend(longs_and_visible_aliases(cmd).into_iter().filter_map(
-                        |(f, help)| {
-                            f.starts_with(flag).then(|| {
-                                CompletionCandidate::new(format!("--{}", f).into())
-                                    .help(help)
-                                    .visible(true)
+                    completions.extend(
+                        longs_and_visible_aliases(cmd)
+                            .into_iter()
+                            .filter_map(|comp| {
+                                comp.get_content()
+                                    .starts_with(format!("--{}", flag).as_str())
+                                    .then(|| comp)
                             })
-                        },
-                    ));
+                            .chain(hidden_longs_aliases(cmd).into_iter().filter_map(|comp| {
+                                comp.get_content()
+                                    .starts_with(format!("--{}", flag).as_str())
+                                    .then(|| comp)
+                            })),
+                    );
                 }
             }
         } else if arg.is_escape() || arg.is_stdio() || arg.is_empty() {
             // HACK: Assuming knowledge of is_escape / is_stdio
-            completions.extend(longs_and_visible_aliases(cmd).into_iter().map(|(f, help)| {
-                CompletionCandidate::new(format!("--{}", f).into())
-                    .help(help)
-                    .visible(true)
-            }));
+            completions.extend(
+                longs_and_visible_aliases(cmd)
+                    .into_iter()
+                    .chain(hidden_longs_aliases(cmd).into_iter()),
+            );
         }
 
         if arg.is_empty() || arg.is_stdio() || arg.is_short() {
@@ -152,11 +157,22 @@ fn complete_arg(
                 shorts_and_visible_aliases(cmd)
                     .into_iter()
                     // HACK: Need better `OsStr` manipulation
-                    .map(|(f, help)| {
-                        CompletionCandidate::new(format!("{}{}", dash_or_arg, f).into())
-                            .help(help)
-                            .visible(true)
-                    }),
+                    .map(|comp| {
+                        CompletionCandidate::new(
+                            format!("{}{}", dash_or_arg, comp.get_content().to_string_lossy())
+                                .into(),
+                        )
+                        .help(comp.get_help().clone())
+                        .visible(comp.is_visible())
+                    })
+                    .chain(hidden_shorts_aliases(cmd).into_iter().map(|comp| {
+                        CompletionCandidate::new(
+                            format!("{}{}", dash_or_arg, comp.get_content().to_string_lossy())
+                                .into(),
+                        )
+                        .help(comp.get_help().clone())
+                        .visible(false)
+                    })),
             );
         }
     }
@@ -175,6 +191,12 @@ fn complete_arg(
     if let Ok(value) = arg.to_value() {
         completions.extend(complete_subcommand(value, cmd));
     }
+
+    completions = if completions.iter().any(|a| a.is_visible()) {
+        completions.into_iter().filter(|a| a.is_visible()).collect()
+    } else {
+        completions
+    };
 
     Ok(completions)
 }
@@ -304,15 +326,35 @@ fn complete_subcommand(value: &str, cmd: &clap::Command) -> Vec<CompletionCandid
 
 /// Gets all the long options, their visible aliases and flags of a [`clap::Command`].
 /// Includes `help` and `version` depending on the [`clap::Command`] settings.
-fn longs_and_visible_aliases(p: &clap::Command) -> Vec<(String, Option<StyledStr>)> {
+fn longs_and_visible_aliases(p: &clap::Command) -> Vec<CompletionCandidate> {
     debug!("longs: name={}", p.get_name());
 
     p.get_arguments()
         .filter_map(|a| {
             a.get_long_and_visible_aliases().map(|longs| {
-                longs
-                    .into_iter()
-                    .map(|s| (s.to_string(), a.get_help().cloned()))
+                longs.into_iter().map(|s| {
+                    CompletionCandidate::new(format!("--{}", s.to_string()).into())
+                        .help(a.get_help().cloned())
+                        .visible(!a.is_hide_set())
+                })
+            })
+        })
+        .flatten()
+        .collect()
+}
+
+/// Gets all the long hidden aliases and flags of a [`clap::Command`].
+fn hidden_longs_aliases(p: &clap::Command) -> Vec<CompletionCandidate> {
+    debug!("longs: name={}", p.get_name());
+
+    p.get_arguments()
+        .filter_map(|a| {
+            a.get_hidden_aliases().map(|longs| {
+                longs.into_iter().map(|s| {
+                    CompletionCandidate::new(format!("--{}", s.to_string()).into())
+                        .help(a.get_help().cloned())
+                        .visible(false)
+                })
             })
         })
         .flatten()
@@ -321,13 +363,35 @@ fn longs_and_visible_aliases(p: &clap::Command) -> Vec<(String, Option<StyledStr
 
 /// Gets all the short options, their visible aliases and flags of a [`clap::Command`].
 /// Includes `h` and `V` depending on the [`clap::Command`] settings.
-fn shorts_and_visible_aliases(p: &clap::Command) -> Vec<(char, Option<StyledStr>)> {
+fn shorts_and_visible_aliases(p: &clap::Command) -> Vec<CompletionCandidate> {
     debug!("shorts: name={}", p.get_name());
 
     p.get_arguments()
         .filter_map(|a| {
-            a.get_short_and_visible_aliases()
-                .map(|shorts| shorts.into_iter().map(|s| (s, a.get_help().cloned())))
+            a.get_short_and_visible_aliases().map(|shorts| {
+                shorts.into_iter().map(|s| {
+                    CompletionCandidate::new(s.to_string().into())
+                        .help(a.get_help().cloned())
+                        .visible(!a.is_hide_set())
+                })
+            })
+        })
+        .flatten()
+        .collect()
+}
+
+fn hidden_shorts_aliases(p: &clap::Command) -> Vec<CompletionCandidate> {
+    debug!("shorts: name={}", p.get_name());
+
+    p.get_arguments()
+        .filter_map(|a| {
+            a.get_hidden_short_aliases().map(|shorts| {
+                shorts.into_iter().map(|s| {
+                    CompletionCandidate::new(s.to_string().into())
+                        .help(a.get_help().cloned())
+                        .visible(false)
+                })
+            })
         })
         .flatten()
         .collect()

@@ -3908,6 +3908,21 @@ impl Arg {
         Some(shorts)
     }
 
+    /// Get hidden short aliases for this argument, if any
+    #[inline]
+    pub fn get_hidden_short_aliases(&self) -> Option<Vec<char>> {
+        if self.short_aliases.is_empty() {
+            None
+        } else {
+            Some(
+                self.short_aliases
+                    .iter()
+                    .filter_map(|(c, v)| if !*v { Some(*c) } else { None })
+                    .collect(),
+            )
+        }
+    }
+
     /// Get the long option name for this argument, if any
     #[inline]
     pub fn get_long(&self) -> Option<&str> {
@@ -3950,6 +3965,21 @@ impl Arg {
             longs.extend(aliases);
         }
         Some(longs)
+    }
+
+    /// Get hidden aliases for this argument, if any
+    #[inline]
+    pub fn get_hidden_aliases(&self) -> Option<Vec<&str>> {
+        if self.aliases.is_empty() {
+            None
+        } else {
+            Some(
+                self.aliases
+                    .iter()
+                    .filter_map(|(s, v)| if !*v { Some(s.as_str()) } else { None })
+                    .collect(),
+            )
+        }
     }
 
     /// Get the names of possible values for this argument. Only useful for user

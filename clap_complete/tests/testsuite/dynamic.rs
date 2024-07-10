@@ -101,9 +101,7 @@ fn suggest_hidden_long_flag_aliases() {
         complete!(cmd, "--hello"),
         snapbox::str![
             "--hello-world
---hello-world-foo
---hello-moon
---hello-moon-foo"
+--hello-world-foo"
         ]
     );
 
@@ -115,9 +113,18 @@ fn suggest_hidden_long_flag_aliases() {
         ]
     );
 
-    assert_data_eq!(complete!(cmd, "--hidden-"), snapbox::str![""]);
+    assert_data_eq!(
+        complete!(cmd, "--hidden-"),
+        snapbox::str![
+            "--hidden-world
+--hidden-moon"
+        ]
+    );
 
-    assert_data_eq!(complete!(cmd, "--hidden-w"), snapbox::str![""])
+    assert_data_eq!(
+        complete!(cmd, "--hidden-w"),
+        snapbox::str!["--hidden-world"]
+    );
 }
 
 #[test]
