@@ -139,10 +139,7 @@ fn suggest_hidden_possible_value() {
 
     assert_data_eq!(
         complete!(cmd, "--hello-world=hel"),
-        snapbox::str![
-            "--hello-world=hello-world\tSay hello to the world
---hello-world=hello-moon\tSay hello to the moon"
-        ]
+        snapbox::str!["--hello-world=hello-world\tSay hello to the world"]
     );
 
     assert_data_eq!(
