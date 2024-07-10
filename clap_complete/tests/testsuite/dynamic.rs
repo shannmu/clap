@@ -124,6 +124,34 @@ hello-world-foo"
 }
 
 #[test]
+fn suggest_hidden_possible_value() {
+    let mut cmd = Command::new("exhaustive").arg(
+        clap::Arg::new("hello-world")
+            .long("hello-world")
+            .value_parser([
+                PossibleValue::new("hello-world").help("Say hello to the world"),
+                PossibleValue::new("hello-moon")
+                    .help("Say hello to the moon")
+                    .hide(true),
+                PossibleValue::new("goodbye-world").help("Say goodbye to the world"),
+            ]),
+    );
+
+    assert_data_eq!(
+        complete!(cmd, "--hello-world=hel"),
+        snapbox::str![
+            "--hello-world=hello-world\tSay hello to the world
+--hello-world=hello-moon\tSay hello to the moon"
+        ]
+    );
+
+    assert_data_eq!(
+        complete!(cmd, "--hello-world=hello-m"),
+        snapbox::str!["--hello-world=hello-moon\tSay hello to the moon"]
+    )
+}
+
+#[test]
 fn suggest_hidden_long_flag_aliases() {
     let mut cmd = Command::new("exhaustive")
         .arg(
