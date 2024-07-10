@@ -68,9 +68,7 @@ fn suggest_hidden_subcommand_and_aliases() {
     assert_data_eq!(
         complete!(cmd, "hello-"),
         snapbox::str![
-            "hello-moon
-hello-moon-foo
-hello-world
+            "hello-world
 hello-world-foo"
         ]
     );
@@ -83,7 +81,16 @@ hello-moon-foo"
         ]
     );
 
-    assert_data_eq!(complete!(cmd, "hidden-"), snapbox::str![""]);
+    assert_data_eq!(
+        complete!(cmd, "hidden-"),
+        snapbox::str![
+            "hidden-goodbye
+hidden-moon
+hidden-world"
+        ]
+    );
+
+    assert_data_eq!(complete!(cmd, "hidden-w"), snapbox::str!["hidden-world"]);
 }
 
 #[test]

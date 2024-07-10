@@ -184,19 +184,19 @@ fn complete_dynamic() {
 
     let input = "exhaustive \t";
     let expected = snapbox::str![
-        r#"% exhaustive
-action                                                             last              -V         (Print version)
-alias                                                              pacman            --generate      (generate)
-complete            (Register shell completions for this program)  quote             --global      (everywhere)
-help  (Print this message or the help of the given subcommand(s))  value             --help        (Print help)
-hint                                                               -h  (Print help)  --version  (Print version)"#
+        r#"% exhaustive 
+action                                                             pacman               --generate      (generate)
+alias                                                              quote                --global      (everywhere)
+help  (Print this message or the help of the given subcommand(s))  value                --help        (Print help)
+hint                                                               -h     (Print help)  --version  (Print version)
+last                                                               -V  (Print version)  "#
     ];
     let actual = runtime.complete(input, &term).unwrap();
     assert_data_eq!(actual, expected);
 
     let input = "exhaustive quote \t";
     let expected = snapbox::str![
-        r#"% exhaustive quote
+        r#"% exhaustive quote 
 cmd-backslash                                        (Avoid '\n')
 cmd-backticks              (For more information see `echo test`)
 cmd-brackets                             (List packages [filter])
