@@ -46,6 +46,47 @@ fn suggest_hidden_long_flags() {
 }
 
 #[test]
+fn suggest_hidden_subcommand_and_aliases() {
+    let mut cmd = Command::new("exhaustive")
+        .subcommand(
+            Command::new("hello-world")
+                .visible_alias("hello-world-foo")
+                .alias("hidden-world"),
+        )
+        .subcommand(
+            Command::new("hello-moon")
+                .visible_alias("hello-moon-foo")
+                .alias("hidden-moon")
+                .hide(true),
+        )
+        .subcommand(
+            Command::new("goodbye-world")
+                .visible_alias("goodbye-world-foo")
+                .alias("hidden-goodbye"),
+        );
+
+    assert_data_eq!(
+        complete!(cmd, "hello-"),
+        snapbox::str![
+            "hello-moon
+hello-moon-foo
+hello-world
+hello-world-foo"
+        ]
+    );
+
+    assert_data_eq!(
+        complete!(cmd, "hello-m"),
+        snapbox::str![
+            "hello-moon
+hello-moon-foo"
+        ]
+    );
+
+    assert_data_eq!(complete!(cmd, "hidden-"), snapbox::str![""]);
+}
+
+#[test]
 fn suggest_subcommand_aliases() {
     let mut cmd = Command::new("exhaustive")
         .subcommand(
