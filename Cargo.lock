@@ -601,7 +601,6 @@ version = "0.5.1"
 dependencies = [
  "completest 0.4.1",
  "ptyprocess",
- "tempfile",
  "vt100",
 ]
 
