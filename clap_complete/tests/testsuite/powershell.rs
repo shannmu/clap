@@ -140,7 +140,7 @@ fn register_completion() {
 }
 
 #[test]
-#[cfg(unix)]
+#[cfg(windows)]
 fn complete() {
     if !common::has_command("pwsh") {
         return;
