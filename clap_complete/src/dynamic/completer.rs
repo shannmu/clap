@@ -1,7 +1,9 @@
-use core::num;
 use std::ffi::OsStr;
 use std::ffi::OsString;
+use std::ops::Deref;
+use std::sync::Arc;
 
+use clap::builder::ArgExt;
 use clap::builder::StyledStr;
 use clap_lex::OsStrExt as _;
 
@@ -385,8 +387,15 @@ fn complete_arg_value(
                 values.extend(complete_path(value_os, current_dir, |_| true));
             }
         }
+
         values.sort();
     }
+
+    let value_os = match value {
+        Ok(value) => OsStr::new(value),
+        Err(value_os) => value_os,
+    };
+    values.extend(complete_custom_arg_value(value_os, arg));
 
     values
 }
@@ -440,6 +449,20 @@ fn complete_path(
     }
 
     completions
+}
+
+fn complete_custom_arg_value(value: &OsStr, arg: &clap::Arg) -> Vec<CompletionCandidate> {
+    let mut values = Vec::new();
+    debug!("complete_custom_arg_value: arg={arg:?}, value={value:?}");
+
+    if let Some(completer) = arg.get::<ArgValueCompleter>() {
+        let custom_arg_values = completer.custom_hint();
+        values.extend(custom_arg_values);
+    }
+
+    values.retain(|comp| comp.get_content().starts_with(&value.to_string_lossy()));
+
+    values
 }
 
 fn complete_subcommand(value: &str, cmd: &clap::Command) -> Vec<CompletionCandidate> {
@@ -704,3 +727,75 @@ impl CompletionCandidate {
         self.visible
     }
 }
+
+/// This trait is used to provide users a way to add custom value hint to the argument.
+/// This is useful when predefined value hints are not enough.
+pub trait CustomCompleter: core::fmt::Debug + Send + Sync {
+    /// This method should return a list of custom value completions.
+    /// If there is no completion, it should return `vec![]`.
+    ///
+    /// See [`CompletionCandidate`] for more information.
+    fn custom_hint(&self) -> Vec<CompletionCandidate>;
+}
+
+/// A wrapper for custom completer
+///
+/// # Example
+///
+/// ```rust
+/// use clap_complete::dynamic::{ArgValueCompleter, CustomCompleter};
+/// use clap_complete::dynamic::CompletionCandidate;
+/// use std::ffi::OsString;
+///
+/// #[derive(Debug)]
+/// struct MyCustomCompleter {
+///     file: std::path::PathBuf,
+/// }
+///
+/// impl CustomCompleter for MyCustomCompleter {
+///     fn custom_hint(&self) -> Vec<CompletionCandidate> {
+///         let content = std::fs::read_to_string(&self.file);
+///         match content {
+///             Ok(content) => {
+///                 content.lines().map(|os| CompletionCandidate::new(os).visible(true)).collect()
+///             }
+///             Err(_) => vec![],
+///         }
+///     }
+/// }
+///
+/// fn main() {
+///     let completer = ArgValueCompleter::new(MyCustomCompleter{
+///         file: std::path::PathBuf::from("/path/to/file"),
+///     });
+///
+///     // TODO: Need to implement this command by using derive API.
+///     // This is just a placeholder to show how to add custom completer.
+///     let mut arg = clap::Arg::new("custom").long("custom");
+///     arg.add(completer);
+///     let mut cmd = clap::Command::new("dynamic").arg(arg);
+/// }
+///    
+/// ```
+#[derive(Debug, Clone)]
+pub struct ArgValueCompleter(Arc<dyn CustomCompleter>);
+
+impl ArgValueCompleter {
+    /// Create a new `ArgValueCompleter` with a custom completer
+    pub fn new<C: CustomCompleter>(completer: C) -> Self
+    where
+        C: 'static + CustomCompleter,
+    {
+        Self(Arc::new(completer))
+    }
+}
+
+impl Deref for ArgValueCompleter {
+    type Target = dyn CustomCompleter;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl ArgExt for ArgValueCompleter {}
