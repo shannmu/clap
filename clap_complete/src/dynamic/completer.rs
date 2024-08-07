@@ -241,7 +241,6 @@ fn complete_arg(
                                 comp.get_content().to_string_lossy()
                             ))
                             .help(comp.get_help().cloned())
-                            .visible(true)
                         }),
                 );
             } else if let Some(short) = arg.to_short() {
@@ -428,20 +427,14 @@ fn complete_path(
             let path = entry.path();
             let mut suggestion = pathdiff::diff_paths(&path, current_dir).unwrap_or(path);
             suggestion.push(""); // Ensure trailing `/`
-            completions.push(
-                CompletionCandidate::new(suggestion.as_os_str().to_owned())
-                    .help(None)
-                    .visible(true),
-            );
+            completions
+                .push(CompletionCandidate::new(suggestion.as_os_str().to_owned()).help(None));
         } else {
             let path = entry.path();
             if is_wanted(&path) {
                 let suggestion = pathdiff::diff_paths(&path, current_dir).unwrap_or(path);
-                completions.push(
-                    CompletionCandidate::new(suggestion.as_os_str().to_owned())
-                        .help(None)
-                        .visible(true),
-                );
+                completions
+                    .push(CompletionCandidate::new(suggestion.as_os_str().to_owned()).help(None));
             }
         }
     }
@@ -659,6 +652,8 @@ fn parse_positional<'a>(
 ///
 /// This makes it easier to add more fields to completion candidate,
 /// rather than using `(OsString, Option<StyledStr>)` or `(String, Option<StyledStr>)` to represent a completion candidate
+///
+/// **NOTE:** `visible` is false by default. Please try to use `new` method instead of `default`` method.
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CompletionCandidate {
     /// Main completion candidate content
@@ -677,6 +672,7 @@ impl CompletionCandidate {
         let content = content.into();
         Self {
             content,
+            visible: true,
             ..Default::default()
         }
     }
