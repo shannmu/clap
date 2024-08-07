@@ -294,7 +294,12 @@ fn complete_arg(
                 .get_positionals()
                 .find(|p| p.get_index() == Some(pos_index))
             {
-                completions.extend(complete_arg_value(arg.to_value(), positional, current_dir));
+                completions.extend(
+                    complete_arg_value(arg.to_value(), positional, current_dir)
+                        .into_iter()
+                        .map(|comp| comp.set_is_complete(true))
+                        .collect::<Vec<_>>(),
+                );
             }
 
             if let Ok(value) = arg.to_value() {
@@ -547,11 +552,13 @@ fn subcommands(p: &clap::Command) -> Vec<CompletionCandidate> {
                     CompletionCandidate::new(s.to_string())
                         .help(sc.get_about().cloned())
                         .visible(!sc.is_hide_set())
+                        .set_is_complete(true)
                 })
                 .chain(sc.get_aliases().map(|s| {
                     CompletionCandidate::new(s.to_string())
                         .help(sc.get_about().cloned())
                         .visible(false)
+                        .set_is_complete(true)
                 }))
         })
         .collect()
@@ -669,6 +676,9 @@ pub struct CompletionCandidate {
 
     /// Whether the completion candidate is visible
     visible: bool,
+
+    /// Whether the completion candidate is incomplete
+    is_complete: bool,
 }
 
 impl CompletionCandidate {
@@ -693,6 +703,12 @@ impl CompletionCandidate {
         self
     }
 
+    /// Set the completeness of the completion candidate
+    pub fn set_is_complete(mut self, is_complete: bool) -> Self {
+        self.is_complete = is_complete;
+        self
+    }
+
     /// Get the content of the completion candidate
     pub fn get_content(&self) -> &OsStr {
         &self.content
@@ -706,5 +722,10 @@ impl CompletionCandidate {
     /// Get the visibility of the completion candidate
     pub fn is_visible(&self) -> bool {
         self.visible
+    }
+
+    /// Get the completeness of the completion candidate
+    pub fn is_complete(&self) -> bool {
+        self.is_complete
     }
 }
